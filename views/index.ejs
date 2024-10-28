@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <style>
+         /* General styles */
+         * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ff9a9e, #fad0c4, #fbc2eb, #a18cd1);
+            background-size: 200% 200%;
+            animation: gradientAnimation 10s ease infinite;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 60px;
+        }
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .nav {
+            width: 100%;
+            text-align: center;
+            padding: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            display: flex;
+            justify-content:space-between ;
+            padding-left: 40px;
+            padding-right: 40px;
+            top: 0;
+            z-index: 10;
+        }
+        .nav h1 {
+            font-size: 1.5rem;
+            color: #333;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 800px;
+            height: 85vh;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            margin-top: -40px;
+            overflow: hidden;
+        }
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: rgba(240, 240, 240, 0.9);
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            max-width: 60%;
+            background-color: #4CAF50;
+            color: white;
+            display: inline-block;
+            animation: slideIn 0.3s ease-in-out;
+        }
+        .message.right {
+            align-self: flex-end;
+            text-align: right;
+        }
+        .message.left {
+            align-self: flex-start;
+            text-align: left;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .bottom {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #fff;
+            border-top: 1px solid #ccc;
+            gap: 10px;
+        }
+        .msg {
+            flex: 1;
+            padding: 12px;
+            border-radius: 30px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+        }
+        .send {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+        .send:hover {
+            background-color: #45a049;
+        }
+        .video{
+            text-decoration: dashed;
+            color: #000;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color:rgba(255, 0, 0, 0.707);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+        .a{
+            
+            text-decoration: dashed;
+            color: #000;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color:rgba(255, 0, 0, 0.689);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        
+        }
+    </style>
+</head>
+
+<body>
+    <div class="nav">
+        <h1>Chat App</h1>
+        <a href="/video" class="video">Video call</a>
+        <a href="https://github.com/priyadarshi4" class="a">PRIYADARSHI</a>
+    </div>
+    <div class="chat-container">
+        <div class="messages"></div>
+        <div class="bottom">
+            <input class="msg" type="text" placeholder="Type a message">
+            <button class="send">Send</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"
+        integrity="sha384-OoIbkvzsFFQAG88r+IqMAjyOtYDPGO0cqK5HF5Uosdy/zUEGySeAzytENMDynREd"
+        crossorigin="anonymous"></script>
+    <script >
+        
+let messagesContainer = document.querySelector(".messages")
+let msgInput = document.querySelector(".msg")
+let sendButton = document.querySelector(".send")
+
+
+
+let socket = io();
+let room;
+
+socket.emit("joinRoom")
+
+socket.on("joined",(roomName)=>{
+    room = roomName
+    alert("someone join the chat")
+    
+})
+ 
+socket.on("user-dis", function() {
+    alert("user gone")
+});
+
+sendButton.addEventListener("click",(e)=>{
+    e.preventDefault()
+    socket.emit("message",{room:room,message:msgInput.value})
+    appendMessage(`${msgInput.value}`,"right")
+    msgInput.value=""  
+})
+
+socket.on("message",(message)=>{
+    appendMessage(`${message}`,"left")
+})
+
+function appendMessage(message, side) {
+    const messageElement = document.createElement("div");
+    messageElement.innerText = message;
+    messageElement.classList.add("message", side);
+    messagesContainer.append(messageElement);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+
+    </script>
+</body>
+
+</html>

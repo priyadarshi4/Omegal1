@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Call App</title>
+    
+    <style>
+       /* Gradient background and animations */
+       body {
+        background: linear-gradient(135deg, #ff9a9e, #fad0c4, #fbc2eb, #a18cd1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            animation: fadeIn 1.5s ease-in-out;
+        }
+
+        /* Fade-in animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Video call container styles */
+        .video-call-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(15px);
+            animation: scaleIn 0.5s ease-in-out;
+        }
+
+        /* Scale-in animation */
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.7);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Video elements */
+        video {
+            width: 320px;
+            height: 240px;
+            border-radius: 10px;
+            margin: 10px;
+            background-color: #000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+        }
+
+        video:hover {
+            transform: scale(1.05);
+        }
+
+        /* Controls styles */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-button {
+            background: linear-gradient(45deg, #ff4b2b, #ff416c);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s ease, transform 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-button:hover {
+            background: linear-gradient(45deg, #ff416c, #ff4b2b);
+            transform: translateY(-2px);
+        }
+
+        /* Button ripple effect */
+        .control-button::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: scale(0);
+            opacity: 0;
+            pointer-events: none;
+            animation: ripple 0.6s linear;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        .video{
+            text-decoration: dashed;
+            color: #000;
+            
+            padding: 10px 20px;
+            background-color:rgba(255, 0, 0, 0.707);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+    
+        .nav {
+            width: 100%;
+            text-align: center;
+            padding: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            display: flex;
+            justify-content:space-between ;
+            padding-left: 40px;
+            padding-right: 40px;
+            top: 0;
+            z-index: 10;
+        }
+        .nav h1 {
+            font-size: 1.5rem;
+            color: #333;
+            margin-left: 15px;
+        }
+        .video{
+            text-decoration: dashed;
+            color: #000;
+            margin-top: 10px;
+            
+            background-color:rgba(255, 0, 0, 0.707);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+        .a{
+            
+            text-decoration: dashed;
+            color: #000;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color:rgba(255, 0, 0, 0.689);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <h1>Video call</h1>
+        <a href="/" class="video">Chat</a>
+        <a href="https://github.com/priyadarshi4" class="a">PRIYADARSHI</a>
+    </div>
+    <div class="video-call-container">
+        <div class="videos">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+        
+    </div>
+    
+    <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"
+        integrity="sha384-OoIbkvzsFFQAG88r+IqMAjyOtYDPGO0cqK5HF5Uosdy/zUEGySeAzytENMDynREd"
+        crossorigin="anonymous"></script>
+
+    
+    <script >
+        let socket = io();
+let room;
+
+socket.emit("joinRoom");
+
+socket.on("joined", (roomName) => {
+    room = roomName;
+});
+
+let localStream;
+let remoteStream = new MediaStream(); // Initialize remoteStream
+let peerConnection;
+let inCall = false;
+
+const rtcSettings = {
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }] // Use the correct STUN server URL
+};
+
+const initializer = async () => {
+    socket.on("signalingMessage", handelSignalingMessage);
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: true,
+        });
+        document.querySelector("#localVideo").srcObject = localStream;
+
+        initiateOffer();
+
+        inCall = true;
+    } catch (err) {
+        console.log("Rejected by user: " + err);
+    }
+};
+
+const initiateOffer = async () => {
+    await createPeerConnection();
+
+    try {
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit("signalingMessage", {
+            room,
+            message: JSON.stringify({
+                type: "offer",
+                offer
+            })
+        });
+    } catch (err) {
+        console.log("Error in creating offer: " + err);
+    }
+};
+
+const createPeerConnection = () => {
+    peerConnection = new RTCPeerConnection(rtcSettings);
+
+    // Set the remote video element source to the remoteStream
+    document.querySelector("#remoteVideo").srcObject = remoteStream;
+
+    localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, localStream);
+    });
+
+    peerConnection.ontrack = (event) => {
+        event.streams[0].getTracks().forEach(track => {
+            remoteStream.addTrack(track);
+        });
+    };
+
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            console.log("Sending ICE candidate");
+
+            socket.emit("signalingMessage", {
+                room,
+                message: JSON.stringify({
+                    type: "candidate",
+                    candidate: event.candidate
+                })
+            });
+        }
+    };
+
+    peerConnection.onconnectionstatechange = () => {
+        console.log("Connection state change:", peerConnection.connectionState);
+    };
+};
+
+const handelSignalingMessage = async (message) => {
+    const { type, offer, answer, candidate } = JSON.parse(message);
+    if (type === "offer") handleOffer(offer);
+    if (type === "answer") handleAnswer(answer);
+    if (type === "candidate" && peerConnection) {
+        try {
+            await peerConnection.addIceCandidate(candidate);
+        } catch (err) {
+            console.log("Failed to add ICE candidate:", err);
+        }
+    }
+};
+
+const handleOffer = async (offer) => {
+    await createPeerConnection();
+    try {
+        await peerConnection.setRemoteDescription(offer);
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        socket.emit("signalingMessage", { room, message: JSON.stringify({ type: "answer", answer }) });
+        inCall = true;
+    } catch (err) {
+        console.log("Failed to handle offer:", err);
+    }
+};
+
+const handleAnswer = async (answer) => {
+    try {
+        await peerConnection.setRemoteDescription(answer);
+    } catch (err) {
+        console.log("Failed to handle answer:", err);
+    }
+};
+
+document.querySelectorAll("video")
+    .forEach(video => {
+        video.addEventListener("click", function () {
+            socket.emit("startvc", { room });
+        });
+    });
+
+socket.on("incomingcall", () => {
+    console.log("Incoming call");
+});
+
+initializer();
+
+    </script>
+</body>
+</html>
